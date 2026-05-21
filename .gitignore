@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local skill cache / artifacts
+*.tmp
+/tmp/
+.cache/
+
+# Don't commit user-specific package metadata
+package.json
+package-lock.json
+node_modules/
+
+# 内部备份(git 化时备份的旧 .git 目录)
+.*-BACKUP/
+*.bak
