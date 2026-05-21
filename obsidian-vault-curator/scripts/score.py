@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +31,55 @@ WEIGHTS = {"relation": 0.4, "freshness": 0.3, "completeness": 0.3}
 STALE_AFTER_DAYS = 30
 STALE_SCORE_THRESHOLD = 5.0
 ARCHIVED_AFTER_DAYS = 90
+
+# 写回 frontmatter 的三个 skill 管控字段
+WRITE_BACK_KEYS = ("score", "lifecycle", "last_audit")
+FRONTMATTER_RE = re.compile(r"^(---\n)(.*?)(\n---\n)", re.DOTALL)
+
+
+def write_score_to_frontmatter(note_path: Path, score_total: float,
+                                lifecycle: str, last_audit: str) -> bool:
+    """更新或追加 score / lifecycle / last_audit 到笔记 frontmatter。
+    返回是否真的改了文件(避免无意义的 mtime 抖动)。"""
+    text = note_path.read_text(encoding="utf-8", errors="replace")
+    new_values = {
+        "score": f"{score_total}",
+        "lifecycle": lifecycle,
+        "last_audit": last_audit,
+    }
+
+    m = FRONTMATTER_RE.match(text)
+    if m:
+        fm_body = m.group(2)
+        lines = fm_body.splitlines()
+        # 替换已存在的 key
+        changed = False
+        seen = set()
+        for i, line in enumerate(lines):
+            for k, v in new_values.items():
+                if re.match(rf"^\s*{re.escape(k)}\s*:", line):
+                    new_line = f"{k}: {v}"
+                    if line != new_line:
+                        lines[i] = new_line
+                        changed = True
+                    seen.add(k)
+                    break
+        # 追加未存在的 key
+        for k, v in new_values.items():
+            if k not in seen:
+                lines.append(f"{k}: {v}")
+                changed = True
+        if not changed:
+            return False
+        new_fm = "---\n" + "\n".join(lines) + "\n---\n"
+        new_text = new_fm + text[m.end():]
+    else:
+        # 无 frontmatter,创建一个最小的
+        fm_lines = ["---"] + [f"{k}: {v}" for k, v in new_values.items()] + ["---\n"]
+        new_text = "\n".join(fm_lines) + "\n" + text
+
+    note_path.write_text(new_text, encoding="utf-8")
+    return True
 
 
 def score_relation(out_n: int, in_n: int) -> float:
@@ -73,10 +123,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", "--input", default="/tmp/vault-scan.json")
     ap.add_argument("-o", "--output", default="/tmp/vault-score.json")
+    ap.add_argument("--apply", action="store_true",
+                    help="把 score/lifecycle/last_audit 写回笔记 frontmatter (默认只算不写)")
+    ap.add_argument("--vault", default=None,
+                    help="vault 根目录,不传则从 scan.json 的 vault 字段读")
     args = ap.parse_args()
 
     scan = json.loads(Path(args.input).read_text(encoding="utf-8"))
     now = dt.datetime.now()
+    vault = Path(args.vault) if args.vault else Path(scan["vault"])
+    today = now.date().isoformat()
     items = []
     active = stale = archived = 0
     total_sum = 0.0
@@ -125,8 +181,22 @@ def main() -> int:
         },
     }
     Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[score] mean={result['summary']['mean_score']} · "
-          f"active={active} stale={stale} archived={archived} → {args.output}")
+
+    # 写回 frontmatter
+    written = 0
+    if args.apply:
+        for it in items:
+            note_path = vault / it["path"]
+            if not note_path.exists():
+                continue
+            if write_score_to_frontmatter(note_path, it["score"]["total"],
+                                          it["lifecycle"], today):
+                written += 1
+
+    mode = "APPLY" if args.apply else "calc-only"
+    suffix = f" · frontmatter_written={written}/{len(items)}" if args.apply else ""
+    print(f"[score {mode}] mean={result['summary']['mean_score']} · "
+          f"active={active} stale={stale} archived={archived}{suffix} → {args.output}")
     return 0
 
 
