@@ -14,6 +14,9 @@ tags:
 github: https://github.com/TauricResearch/TradingAgents
 created: 2026-05-11
 updated: 2026-05-11
+score: 5.1
+lifecycle: ACTIVE
+last_audit: 2026-05-21
 ---
 
 # TradingAgents 源码洞察
