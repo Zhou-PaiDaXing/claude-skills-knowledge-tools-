@@ -88,6 +88,18 @@ cp ~/.claude/skills/obsidian-vault-curator/templates/VAULT-SCHEMA.md "$OBSIDIAN_
 | 跨笔记模式提取 | `/obsidian-curate --scope=<分区> --synthesize` |
 | 只补 frontmatter 不动链接 | `/obsidian-curate --apply --frontmatter-only` |
 
+## 📚 真实案例:open-source-vault
+
+[`source-code-analyzer/examples/open-source-vault/`](./source-code-analyzer/examples/open-source-vault/) 是一份**真实使用产出** — 一位用户用本仓库两个 skill 分析 40+ 个开源项目后,在 Obsidian vault 里沉淀的笔记集合。
+
+看点:
+- 🏆 **hermes-agent/** 标杆:概览 + 深度分析 + 学习计划 + 7 个原子分析,章节级 wikilink 跳转
+- 🖼️ **openclaw/** 多文件:分析 + 6 张架构 PNG + drawio + 跨项目对比
+- 📊 **SYNTHESIS.md** 横向矩阵 + 模式集群 + 反模式目录
+- ⭐ 每个笔记 frontmatter 含 `score / lifecycle / last_audit`(由 obsidian-vault-curator 评分写回),证明双 skill 完整闭环
+
+详见 [examples/open-source-vault/README.md](./source-code-analyzer/examples/open-source-vault/README.md)
+
 ---
 
 ## 🛠️ 依赖
